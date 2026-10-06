@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valuación de Acciones</title>
+    <!-- Tailwind via CDN para el layout general -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen p-8">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <h1 class="text-3xl font-bold text-center">Dashboard de Valuación</h1>
+
+        <!-- Controles Superiores -->
+        <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 space-y-4">
+            
+            <div class="flex gap-4 items-end">
+                <div class="flex-1">
+                    <label class="block text-sm text-slate-400 mb-1">Ticker (Ej: AAPL)</label>
+                    <input type="text" id="tickerInput" class="w-full bg-slate-900 border border-slate-600 rounded px-4 py-2 uppercase text-white focus:outline-none focus:border-blue-500" placeholder="AAPL">
+                </div>
+                <button id="calcBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded transition">
+                    Calcular
+                </button>
+            </div>
+
+            <!-- Parámetros DCF Manuales -->
+            <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+                
+                <div class="input-tooltip" data-tooltip="Tasa estimada a la que crecerán los flujos de caja libre de la empresa durante los próximos 5 años.">
+                    <label class="block text-sm text-slate-400 mb-1">Crecimiento Anual (%)</label>
+                    <input type="number" id="growthInput" step="0.1" value="5" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="input-tooltip" data-tooltip="Rendimiento mínimo exigido (WACC). Descuenta los flujos futuros al valor presente considerando el riesgo e inflación.">
+                    <label class="block text-sm text-slate-400 mb-1">Tasa de Descuento (%)</label>
+                    <input type="number" id="discountInput" step="0.1" value="10" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="input-tooltip" data-tooltip="Múltiplo (similar al PER o EV/FCF) aplicado al flujo del año 5 para estimar el valor del negocio a perpetuidad.">
+                    <label class="block text-sm text-slate-400 mb-1">Múltiplo Terminal (x)</label>
+                    <input type="number" id="terminalInput" step="1" value="15" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+                </div>
+
+            </div>
+            
+            <div id="statusMessage" class="text-sm h-5 text-slate-400">Listo para consultar.</div>
+        </div>
+
+        <!-- Grid de Resultados -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            
+            <div class="metric-card" data-tooltip="Precio al que cotiza la acción actualmente en el mercado.">
+                <span class="metric-label">Precio Actual</span>
+                <span id="val-price" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Valor real estimado de la empresa proyectando sus flujos de caja futuros (DCF).">
+                <span class="metric-label">Valor Intrínseco</span>
+                <span id="val-intrinsic" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Diferencia porcentual entre el Valor Intrínseco y el Precio Actual.">
+                <span class="metric-label">Margen / Diferencia</span>
+                <span id="val-diff" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Price/Earnings to Growth. Mide la valoración de la acción ajustada por su crecimiento esperado (<1 es barato).">
+                <span class="metric-label">PEG Ratio</span>
+                <span id="val-peg" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Price to Earnings. Cuánto paga el mercado por cada dólar de ganancia.">
+                <span class="metric-label">PER</span>
+                <span id="val-per" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Enterprise Value. Valor total de la empresa (Capitalización Bursátil + Deuda - Efectivo).">
+                <span class="metric-label">EV</span>
+                <span id="val-ev" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Free Cash Flow. Efectivo libre que genera la empresa tras mantener sus operaciones.">
+                <span class="metric-label">FCF</span>
+                <span id="val-fcf" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="Earnings Before Interest and Taxes. Beneficio operativo de la empresa.">
+                <span class="metric-label">EBIT</span>
+                <span id="val-ebit" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="EV / Free Cash Flow. Cuántas veces el flujo de caja libre cubre el valor total de la empresa.">
+                <span class="metric-label">EV / FCF</span>
+                <span id="val-evfcf" class="metric-value">---</span>
+            </div>
+
+            <div class="metric-card" data-tooltip="EV / EBIT. Indicador de valoración útil para comparar empresas con distinta estructura de deuda.">
+                <span class="metric-label">EV / EBIT</span>
+                <span id="val-evebit" class="metric-value">---</span>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
