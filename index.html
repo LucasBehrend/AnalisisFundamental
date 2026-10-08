@@ -27,25 +27,30 @@
             </div>
 
             <!-- Parámetros DCF Manuales -->
-            <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-700">
-                
-                <div class="input-tooltip" data-tooltip="Tasa estimada a la que crecerán los flujos de caja libre de la empresa durante los próximos 5 años.">
-                    <label class="block text-sm text-slate-400 mb-1">Crecimiento Anual (%)</label>
-                    <input type="number" id="growthInput" step="0.1" value="5" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
-                </div>
-                
-                <div class="input-tooltip" data-tooltip="Rendimiento mínimo exigido (WACC). Descuenta los flujos futuros al valor presente considerando el riesgo e inflación.">
-                    <label class="block text-sm text-slate-400 mb-1">Tasa de Descuento (%)</label>
-                    <input type="number" id="discountInput" step="0.1" value="10" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
-                </div>
-                
-                <div class="input-tooltip" data-tooltip="Múltiplo (similar al PER o EV/FCF) aplicado al flujo del año 5 para estimar el valor del negocio a perpetuidad.">
-                    <label class="block text-sm text-slate-400 mb-1">Múltiplo Terminal (x)</label>
-                    <input type="number" id="terminalInput" step="1" value="15" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
-                </div>
-
+            <!-- Parámetros DCF Manuales -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-700">
+            
+            <div class="input-tooltip" data-tooltip="Tasa estimada a la que crecerán los flujos de caja libre de la empresa.">
+                <label class="block text-sm text-slate-400 mb-1">Crecimiento Anual (%)</label>
+                <input type="number" id="growthInput" step="0.1" value="2" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
             </div>
             
+            <div class="input-tooltip" data-tooltip="Rendimiento mínimo exigido (WACC).">
+                <label class="block text-sm text-slate-400 mb-1">Tasa de Descuento (%)</label>
+                <input type="number" id="discountInput" step="0.1" value="10.3" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div class="input-tooltip" data-tooltip="Tasa de crecimiento a perpetuidad tras los primeros 10 años (suele ser 2% a 3%).">
+                <label class="block text-sm text-slate-400 mb-1">Crecto. Perpetuo (%)</label>
+                <input type="number" id="perpInput" step="0.1" value="2.5" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div class="input-tooltip" data-tooltip="Opcional. Ingresa el FCF estimado completo (Ej: para $10,773 M escribe 10773000000). Si está vacío, usa el dato del último reporte.">
+                <label class="block text-sm text-slate-400 mb-1">FCF Base Manual ($)</label>
+                <input type="number" id="fcfInput" step="any" class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+            </div>
+
+        </div>
             <div id="statusMessage" class="text-sm h-5 text-slate-400">Listo para consultar.</div>
         </div>
 

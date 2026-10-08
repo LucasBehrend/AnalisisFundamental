@@ -55,14 +55,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Obtener valores manuales y convertirlos a decimales
         const growth = parseFloat(document.getElementById('growthInput').value) / 100 || 0.05;
         const discount = parseFloat(document.getElementById('discountInput').value) / 100 || 0.10;
-        const terminal = parseFloat(document.getElementById('terminalInput').value) || 15;
+        const perp = parseFloat(document.getElementById('perpInput').value) / 100 || 0.025;
+        
+        // FCF Manual
+        const fcfRaw = document.getElementById('fcfInput').value;
 
         showStatus('Consultando datos y calculando...', 'text-yellow-400');
         resetGrid();
 
         try {
             // Se pasan las estimaciones manuales por URL (Query Params)
-            const url = `http://localhost:8000/api/valuate/${ticker}?growth=${growth}&discount=${discount}&terminal=${terminal}`;
+            let url = `http://localhost:8000/api/valuate/${ticker}?growth=${growth}&discount=${discount}&perp_growth=${perp}`;
+            
+            // Si el usuario ingresó un FCF manual, lo sumamos a los parámetros
+            if (fcfRaw && !isNaN(fcfRaw)) {
+                url += `&manual_fcf=${parseFloat(fcfRaw)}`;
+            }
+
             const response = await fetch(url);
             
             if (!response.ok) throw new Error('Error al buscar el ticker o sin datos.');
@@ -75,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatus(error.message, 'text-red-400');
         }
     });
-
     // Permitir Enter
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') btn.click();
