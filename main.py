@@ -1,10 +1,17 @@
+import os
+import requests
+import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
+from dotenv import load_dotenv
 import uvicorn
-import traceback
 
-app = FastAPI(title="Stock Valuation API")
+load_dotenv()
+
+# Requiere agregar FINNHUB_API_KEY en tu archivo .env
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "").strip("'\" ")
+
+app = FastAPI(title="Stock Valuation API (Finnhub Free Tier)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,114 +21,99 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_analyst_growth_estimate(stock: yf.Ticker, info: dict) -> float:
-    """
-    Obtiene la tasa de crecimiento esperada de los analistas utilizando 
-    las fuentes internas de yfinance en lugar de scraping de HTML estático.
-    """
+def fetch_finnhub(endpoint: str, **kwargs):
+    """Función auxiliar para conectarse a Finnhub y manejar la API Key en los parámetros."""
+    base_url = "https://finnhub.io/api/v1"
+    params = {"token": FINNHUB_API_KEY, **kwargs}
+    
     try:
-        # 1. Intentar obtener 'earningsGrowth' o 'revenueGrowth' directo de info
-        if info.get('revenueGrowth') is not None and info.get('revenueGrowth') != 0:
-            return float(info.get('revenueGrowth'))
-            
-        if info.get('earningsGrowth') is not None and info.get('earningsGrowth') != 0:
-            return float(info.get('earningsGrowth'))
-
-        # 2. Consultar la tabla oficial de growth_estimates de yfinance
-        growth_df = stock.growth_estimates
-        if growth_df is not None and not growth_df.empty:
-            # Buscar el crecimiento estimado para el próximo año +1y / Next Year
-            if '+1y' in growth_df.index:
-                val = growth_df.loc['+1y'].values[0]
-                if val and not float('nan') == val:
-                    return float(val)
-            elif 'nextYear' in growth_df.index:
-                val = growth_df.loc['nextYear'].values[0]
-                if val and not float('nan') == val:
-                    return float(val)
-
-        # 3. Consultar la tabla de estimaciones de ingresos (revenue_estimate)
-        rev_est = stock.revenue_estimate
-        if rev_est is not None and not rev_est.empty and 'growth' in rev_est.columns:
-            # Tomar el crecimiento estimado del año en curso / próximo año
-            growth_val = rev_est['growth'].iloc[0]
-            if growth_val and not float('nan') == growth_val:
-                return float(growth_val)
-
-    except Exception as e:
-        print(f"[Growth Estimate Notice] No se pudo extraer la estimación: {e}")
+        response = requests.get(f"{base_url}{endpoint}", params=params, timeout=10)
         
-    # Si no hay datos disponibles, retorna 0.05 (5% por defecto)
-    return 0.05
+        if response.status_code == 429:
+            print(f"[Finnhub Límite] Demasiadas peticiones (Max 30 por segundo en Free).")
+            return None
+        if response.status_code == 403:
+            print(f"[Finnhub Bloqueo] Endpoint requiere plan premium o API Key inválida.")
+            return None
+            
+        data = response.json()
+        
+        if isinstance(data, dict) and "error" in data:
+            print(f"[Finnhub Error] {data['error']}")
+            return None
+            
+        return data
+    except Exception as err:
+        print(f"[Finnhub Exception] {endpoint} -> {err}")
+        return None
 
 @app.get("/api/valuate/{ticker}")
 def valuate_stock(ticker: str, growth: float = 0.05, discount: float = 0.10, perp_growth: float = 0.025, manual_fcf: float = None):
+    if not FINNHUB_API_KEY:
+        raise HTTPException(status_code=500, detail="FINNHUB_API_KEY no configurada en el archivo .env")
+
+    ticker = ticker.upper()
+
     try:
-        stock = yf.Ticker(ticker.upper())
-        info = stock.info
+        # 1. Cotización en Vivo (Precio Actual)
+        quote = fetch_finnhub("/quote", symbol=ticker)
+        if not quote or 'c' not in quote or quote['c'] == 0:
+            raise HTTPException(status_code=404, detail="Ticker no encontrado o sin precio en Finnhub.")
+        precio_actual = quote['c']
 
-        if 'currentPrice' not in info and 'regularMarketPrice' not in info:
-            raise HTTPException(status_code=404, detail="Ticker no encontrado en Yahoo Finance.")
+        # 2. Perfil de la Empresa (Acciones en Circulación)
+        profile = fetch_finnhub("/stock/profile2", symbol=ticker)
+        # Finnhub reporta 'shareOutstanding' en millones de unidades.
+        shares_millions = profile.get("shareOutstanding", 0) if profile else 0
+        shares = shares_millions * 1_000_000
 
-        precio_actual = info.get('currentPrice', info.get('regularMarketPrice', 0))
-        shares = info.get('sharesOutstanding', 0)
-        per = info.get('trailingPE', 0)
-        peg = info.get('pegRatio', 0)
-        ev = info.get('enterpriseValue', 0)
-        cash = info.get('totalCash', 0)
-        debt = info.get('totalDebt', 0)
+        if shares == 0:
+            raise HTTPException(status_code=400, detail="No se pudieron obtener las acciones en circulación.")
 
-        if ev == 0 and shares > 0 and precio_actual > 0:
-            ev = (shares * precio_actual) + debt - cash
+        # 3. Métricas Financieras Básicas (TTM - Trailing Twelve Months)
+        # El plan gratuito expone ratios base, pero no estimaciones futuras.
+        metrics_res = fetch_finnhub("/stock/metric", symbol=ticker, metric="all")
+        metrics = metrics_res.get("metric", {}) if metrics_res else {}
 
-        ebit = 0
-        try:
-            fin_table = stock.financials
-            if 'EBIT' in fin_table.index:
-                ebit = fin_table.loc['EBIT'].iloc[0]
-        except Exception:
-            pass
+        per = metrics.get("peTTM", 0)
+        # Finnhub Free a veces no provee PEG. Fallback a 0.
+        peg = metrics.get("pegTTM", 0)
 
-        # Free Cash Flow Histórico (OCF - CAPEX)
-        historical_fcf = 0
-        try:
-            cf_table = stock.cashflow
-            if not cf_table.empty:
-                ocf = cf_table.loc['Operating Cash Flow'].iloc[0] if 'Operating Cash Flow' in cf_table.index else cf_table.loc['Total Cash From Operating Activities'].iloc[0]
-                capex = cf_table.loc['Capital Expenditure'].iloc[0] if 'Capital Expenditure' in cf_table.index else 0
-                historical_fcf = ocf + capex 
-        except Exception:
-            historical_fcf = info.get('freeCashflow', 0)
+        # 4. Cálculos de Flujo de Caja y Deuda Neta
+        # Finnhub entrega el FCF por acción (Free Cash Flow Per Share). Lo multiplicamos por las acciones.
+        fcf_per_share = metrics.get("freeCashFlowPerShareTTM", 0)
+        historical_fcf = fcf_per_share * shares
 
-        # Selección del FCF Base
-        # 1. Definición del FCF Base (Año 0)
+        # Finnhub entrega la 'Deuda Neta' (Deuda Total - Efectivo) en millones.
+        net_debt_millions = metrics.get("netDebtAnnual", 0)
+        net_debt = net_debt_millions * 1_000_000
+
+        # EBIT (Si está disponible por acción)
+        ebit_per_share = metrics.get("ebitPerShareTTM", 0)
+        ebit = ebit_per_share * shares
+
+        # 5. Enterprise Value
+        market_cap = precio_actual * shares
+        ev = market_cap + net_debt
+
+        # Ratios suplementarios
+        ev_fcf = (ev / historical_fcf) if historical_fcf and historical_fcf != 0 else 0
+        ev_ebit = (ev / ebit) if ebit and ebit != 0 else 0
+
+        # 6. Selección de FCF Base para el Modelo DCF
+        # Como Finnhub Free NO incluye 'Analyst Estimates' (Crecimiento proyectado), 
+        # dependemos estrictamente del histórico TTM o del input manual del usuario.
         fcf_to_use = 0
-
         if manual_fcf is not None and manual_fcf != 0:
-            # SI EL USUARIO DA UN FCF MANUAL, SE USA ESE VALOR TAL CUAL (SIN MULTIPLICAR)
             fcf_to_use = manual_fcf
         else:
-            # Solo si está vacío se calcula sobre el histórico + crecimiento estimado prudente
-            estimated_growth = get_analyst_growth_estimate(stock, info)
-            
-            # Cap de seguridad: si la tasa extraída es > 25%, la topamos en 15% para no distorsionar el modelo
-            if estimated_growth > 0.25:
-                estimated_growth = 0.15
-                
-            if historical_fcf > 0:
-                fcf_to_use = historical_fcf * (1 + estimated_growth)
-            else:
-                fcf_to_use = historical_fcf
+            fcf_to_use = historical_fcf
 
-        # Ratios
-        ev_fcf = (ev / fcf_to_use) if (ev and fcf_to_use and fcf_to_use != 0) else 0
-        ev_ebit = (ev / ebit) if (ev and ebit and ebit != 0) else 0
-
-        # DCF Model (10 Años + Perpetuidad + Ajuste Deuda/Efectivo)
+        # 7. Modelo DCF (10 Años + Perpetuidad)
         valor_intrinseco = 0
         diferencia = 0
         
-        if fcf_to_use and fcf_to_use > 0 and shares > 0:
+        if fcf_to_use and fcf_to_use > 0:
             pv_fcf_sum = 0
             current_fcf = fcf_to_use
             
@@ -129,11 +121,16 @@ def valuate_stock(ticker: str, growth: float = 0.05, discount: float = 0.10, per
                 current_fcf *= (1 + growth)
                 pv_fcf_sum += current_fcf / ((1 + discount) ** i)
             
+            # Valor Terminal
             terminal_value = (current_fcf * (1 + perp_growth)) / (discount - perp_growth)
             pv_terminal_value = terminal_value / ((1 + discount) ** 10)
             
+            # Enterprise Value Estimado
             enterprise_value_est = pv_fcf_sum + pv_terminal_value
-            equity_value = enterprise_value_est + cash - debt
+            
+            # Equity Value = Enterprise Value Estimado - Deuda Neta
+            # (Restar la Deuda Neta matemáticamente elimina la deuda y suma la caja).
+            equity_value = enterprise_value_est - net_debt
             
             valor_intrinseco = equity_value / shares
             
@@ -156,7 +153,7 @@ def valuate_stock(ticker: str, growth: float = 0.05, discount: float = 0.10, per
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
-        print("\n--- ERROR INESPERADO ---")
+        print("\n--- ERROR INESPERADO (FINNHUB) ---")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
