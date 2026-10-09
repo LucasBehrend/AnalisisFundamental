@@ -22,23 +22,24 @@
         <button id="btn" type="submit">Calcular</button>
       </div>
 
+      <!-- Reemplaza el fieldset de supuestos por este -->
       <fieldset class="supuestos">
         <legend>Supuestos del DCF</legend>
-        <label class="field editable" data-tip="Crecimiento anual que esperás para el flujo de caja libre durante los años proyectados. Si lo dejás vacío se usa el crecimiento de EPS a 5 años de Finnhub, limitado entre 0% y 15%.">
+        <label class="field editable" data-tip="Crecimiento anual que esperás para el flujo de caja libre durante los años proyectados.">
           <span>Crecimiento anual (%)</span>
-          <input id="crecimiento" type="number" step="any" min="-50" max="100" placeholder="Auto">
+          <input id="growth" name="growth" type="number" step="any" min="-50" max="100" required>
         </label>
-        <label class="field editable" data-tip="Rendimiento anual que exigís a la inversión. Con una tasa más alta, el flujo futuro vale menos hoy y baja el valor intrínseco. Suele usarse entre 8% y 12%.">
+        <label class="field editable" data-tip="Rendimiento anual que exigís a la inversión. Suele usarse entre 8% y 12%.">
           <span>Tasa de descuento (%)</span>
-          <input id="descuento" type="number" step="any" min="0.1" max="50" value="10">
+          <input id="discount" name="discount" type="number" step="any" min="0.1" max="50" value="10" required>
         </label>
-        <label class="field editable" data-tip="Crecimiento perpetuo del flujo de caja después del último año proyectado. Debe ser menor que la tasa de descuento y no superar el crecimiento de la economía a largo plazo (2% a 3%).">
+        <label class="field editable" data-tip="Crecimiento perpetuo del flujo de caja. No debe superar el crecimiento de la economía (2% a 3%).">
           <span>Crecimiento terminal (%)</span>
-          <input id="terminal" type="number" step="any" min="-5" max="10" value="2.5">
+          <input id="terminal" name="terminal" type="number" step="any" min="-5" max="10" value="2.5" required>
         </label>
-        <label class="field editable" data-tip="Cantidad de años en los que se proyecta el flujo de caja con el crecimiento indicado. Después de ese período se calcula el valor terminal.">
+        <label class="field editable" data-tip="Cantidad de años en los que se proyecta el flujo de caja.">
           <span>Años de proyección</span>
-          <input id="anios" type="number" step="1" min="1" max="30" value="10">
+          <input id="years" name="years" type="number" step="1" min="1" max="30" value="10" required>
         </label>
       </fieldset>
     </form>
@@ -49,48 +50,53 @@
       <h2 id="empresa"></h2>
 
       <div class="hero">
-        <label class="field big" data-tip="Última cotización de la acción según Finnhub.">
+        <label class="field big" data-tip="Última cotización de la acción.">
           <span>Precio actual</span>
           <input id="precio" readonly>
         </label>
-        <label class="field big" data-tip="Estimación de lo que vale la acción según sus fundamentos. Se calcula con un flujo de caja descontado (DCF) usando los supuestos que ingresaste arriba. Si el FCF no es positivo, usa la fórmula de Graham.">
+        <label class="field big" data-tip="Estimación de lo que vale la acción según el modelo DCF.">
           <span>Valor intrínseco</span>
           <input id="valor_intrinseco" readonly>
         </label>
-        <label class="field big" id="f-diferencia" data-tip="Valor intrínseco menos precio actual. Positivo: el precio está por debajo del valor estimado (posible subvaluación). Negativo: está por encima.">
-          <span>Diferencia</span>
+        <label class="field big pos-neg" id="f-diferencia" data-tip="Diferencia nominal entre el valor intrínseco y el precio actual.">
+          <span>Diferencia ($)</span>
           <input id="diferencia" readonly>
+        </label>
+        <label class="field big pos-neg" id="f-diferencia-pct" data-tip="Diferencia porcentual respecto al precio actual.">
+          <span>Diferencia (%)</span>
+          <input id="diferencia_pct" readonly>
         </label>
       </div>
 
       <div class="grid">
-        <label class="field" data-tip="Earnings per share: ganancia neta de los últimos 12 meses dividida por la cantidad de acciones.">
+        <label class="field" data-tip="Earnings per share: ganancia neta dividida por acciones.">
           <span>EPS</span><input id="eps" readonly>
         </label>
-        <label class="field" data-tip="Price/Earnings: precio dividido por EPS. Indica cuántos años de ganancias actuales paga el mercado por la acción.">
+        <label class="field" data-tip="Price/Earnings: precio dividido por EPS.">
           <span>PER</span><input id="per" readonly>
         </label>
-        <label class="field" data-tip="PER dividido por el crecimiento anual esperado de las ganancias (%). Cerca de 1 suele considerarse un precio razonable para ese crecimiento. Se calcula con el crecimiento de EPS a 5 años.">
+        <label class="field" data-tip="PER dividido por el crecimiento esperado.">
           <span>PEG</span><input id="peg" readonly>
         </label>
-        <label class="field" data-tip="Enterprise Value: capitalización de mercado más deuda neta. Es el precio de comprar toda la empresa, incluida su deuda.">
+        <label class="field" data-tip="Return on Invested Capital: rentabilidad sobre el capital invertido.">
+          <span>ROIC</span><input id="roic" readonly>
+        </label>
+        <label class="field" data-tip="Enterprise Value: valor de la empresa asumiendo su deuda neta.">
           <span>EV</span><input id="ev" readonly>
         </label>
-        <label class="field" data-tip="Free Cash Flow: caja que genera el negocio después de pagar sus gastos operativos e inversiones en capital.">
+        <label class="field" data-tip="Free Cash Flow (Valor por acción).">
           <span>FCF</span><input id="fcf" readonly>
         </label>
-        <label class="field" data-tip="Earnings Before Interest and Taxes: resultado operativo antes de intereses e impuestos. Si Finnhub no lo informa, se estima con el margen operativo por las ventas.">
+        <label class="field" data-tip="Earnings Before Interest and Taxes.">
           <span>EBIT</span><input id="ebit" readonly>
         </label>
-        <label class="field" data-tip="Enterprise Value dividido por FCF. Cuántos años de flujo de caja libre cuesta la empresa entera. Menor suele ser más barato.">
+        <label class="field" data-tip="Enterprise Value dividido por FCF.">
           <span>EV/FCF</span><input id="ev_fcf" readonly>
         </label>
-        <label class="field" data-tip="Enterprise Value dividido por EBIT. Compara el precio de la empresa con su resultado operativo, sin distorsiones por deuda o impuestos.">
+        <label class="field" data-tip="Enterprise Value dividido por EBIT.">
           <span>EV/EBIT</span><input id="ev_ebit" readonly>
         </label>
       </div>
-
-      <p id="metodo" class="nota"></p>
     </section>
   </main>
 

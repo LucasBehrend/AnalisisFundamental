@@ -37,7 +37,7 @@ body {
 }
 
 main {
-  max-width: 880px;
+  max-width: 1080px; /* Ampliado para evitar que los tooltips se amontonen */
   margin: 0 auto;
   padding: 56px 20px 80px;
 }
@@ -119,14 +119,14 @@ header p { margin: 0; color: var(--muted); max-width: 60ch; }
 
 .hero {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr); /* Cambiado a 4 columnas */
   gap: 14px;
   margin-bottom: 14px;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 
@@ -212,11 +212,10 @@ header p { margin: 0; color: var(--muted); max-width: 60ch; }
 .nota { margin: 18px 0 0; font-size: 0.85rem; color: var(--muted); max-width: 70ch; }
 
 @media (max-width: 720px) {
-  .hero { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: repeat(2, 1fr); } /* En móviles se verán 2 arriba y 2 abajo */
   .grid, .supuestos { grid-template-columns: repeat(2, 1fr); }
   h1 { font-size: 1.7rem; }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .field::after { transition: none; }
 }
